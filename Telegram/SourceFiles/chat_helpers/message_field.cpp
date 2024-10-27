@@ -44,13 +44,23 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_helpers.h"
 #include "styles/style_settings.h"
 #include "base/qt/qt_common_adapters.h"
+#include "history/view/history_view_element.h" // Add this include
 
 #include <QtCore/QMimeData>
 #include <QtCore/QStack>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonDocument>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QTextBlock>
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkRequest>
+#include <QtNetwork/QNetworkReply>
+
+// Add this include for logging
+#include "base/debug_log.h"
 
 namespace {
 
@@ -424,46 +434,197 @@ Fn<void(QString now, Fn<void(QString)> save)> DefaultEditLanguageCallback(
 }
 
 void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
-	const auto paused = [passed = args.customEmojiPaused] {
-		return passed && passed();
-	};
-	const auto field = args.field;
-	const auto session = args.session;
-	field->setTagMimeProcessor(
-		FieldTagMimeProcessor(session, args.allowPremiumEmoji));
-	field->setCustomTextContext([=](Fn<void()> repaint) {
-		return std::any(Core::MarkedTextContext{
-			.session = session,
-			.customEmojiRepaint = std::move(repaint),
-		});
-	}, [paused] {
-		return On(PowerSaving::kEmojiChat) || paused();
-	}, [paused] {
-		return On(PowerSaving::kChatSpoiler) || paused();
-	});
-	field->setInstantReplaces(Ui::InstantReplaces::Default());
-	field->setInstantReplacesEnabled(
-		Core::App().settings().replaceEmojiValue());
-	field->setMarkdownReplacesEnabled(rpl::single(Ui::MarkdownEnabledState{
-		Ui::MarkdownEnabled{ std::move(args.allowMarkdownTags) }
-	}));
-	if (const auto &show = args.show) {
-		field->setEditLinkCallback(
-			DefaultEditLinkCallback(show, field, args.fieldStyle));
-		field->setEditLanguageCallback(DefaultEditLanguageCallback(show));
-		InitSpellchecker(show, field, args.fieldStyle != nullptr);
-	}
-	const auto style = field->lifetime().make_state<Ui::ChatStyle>(
-		session->colorIndicesValue());
-	field->setPreCache([=] {
-		return style->messageStyle(false, false).preCache.get();
-	});
-	field->setBlockquoteCache([=] {
-		const auto colorIndex = session->user()->colorIndex();
-		return style->coloredQuoteCache(false, colorIndex).get();
-	});
-}
+    const auto paused = [passed = args.customEmojiPaused] {
+        return passed && passed();
+    };
+    const auto field = args.field;
+    const auto session = args.session;
 
+    // Create AI button with adjusted style
+    const auto generateButton = field->lifetime().make_state<Ui::IconButton>(
+        field.get(),
+        st::sploxGenerate);
+
+
+
+    generateButton->show();
+    generateButton->raise();
+
+    // Calculate button width and set additional margin
+    const auto buttonWidth = generateButton->width();
+
+    field->setAdditionalMargins(QMargins(0, 0, buttonWidth + st::historySendRight, 0));
+
+    // Position the button on the right side
+    field->sizeValue() | rpl::start_with_next([=](QSize size) {
+        generateButton->moveToRight(
+            st::historySendRight,
+            (size.height() - generateButton->height()) / 2);
+    }, field->lifetime());
+
+    // Store the network manager in field's lifetime
+    const auto networkManager = field->lifetime().make_state<QNetworkAccessManager>();
+
+    // Function to get recent chat history
+    const auto getRecentHistory = [=]() -> QString {
+        const auto history = args.session->data().history(
+            args.session->windows().empty()
+                ? PeerId()
+                : args.session->windows().front()->activeChatCurrent().peer()->id);
+        
+        // Build history text
+        struct MessageInfo {
+            QString text;
+            TimeId date;
+        };
+        std::vector<MessageInfo> messages;
+        const int messageLimit = Core::App().settings().sploxMessageContextLength();
+		
+        int count = 0;
+        
+        // First try to get the last message directly
+        if (const auto lastMsg = history->lastMessage()) {
+            if (!lastMsg->isEmpty()) {
+                messages.push_back({
+                    QString("%1: %2")
+                        .arg(lastMsg->from()->name())
+                        .arg(lastMsg->originalText().text),
+                    lastMsg->date()
+                });
+                count++;
+            }
+        }
+
+        // Then iterate through blocks for remaining messages
+        for (const auto &block : history->blocks) {
+            if (count >= messageLimit) {
+                break;
+            }
+
+            for (auto it = block->messages.rbegin(); it != block->messages.rend(); ++it) {
+                if (count >= messageLimit) {
+                    break;
+                }
+
+                const auto item = (*it)->data();
+                // Skip if this is the last message we already added
+                if (count == 1 && item == history->lastMessage()) {
+                    continue;
+                }
+
+                if (item && !item->isEmpty()) {
+                    messages.push_back({
+                        QString("%1: %2")
+                            .arg(item->from()->name())
+                            .arg(item->originalText().text),
+                        item->date()
+                    });
+                    count++;
+                }
+            }
+        }
+        
+        // Sort messages by date
+        std::sort(messages.begin(), messages.end(), 
+            [](const MessageInfo &a, const MessageInfo &b) {
+                return a.date < b.date;
+            });
+        
+        // Join messages with newlines
+        QStringList result;
+        result.reserve(messages.size());
+        for (const auto &msg : messages) {
+            result.append(msg.text);
+        }
+        return result.join("\n");
+    };
+
+    // Function to make API request
+    const auto makeApiRequest = [=](const QString &text) {
+        // Get recent chat history
+        const auto history = getRecentHistory();
+        
+		QString apiUrl; 
+		QString systemPrompt;
+		QString emptyInput;
+		QString model;
+		QString token;	
+		if (Core::App().settings().sploxEnabled()) {
+			apiUrl = Core::App().settings().kSploxInternalURL;
+			systemPrompt = "";
+			emptyInput = "";
+			model = "";
+			token = "";
+		} else {
+			apiUrl = Core::App().settings().sploxURL();
+			systemPrompt = Core::App().settings().sploxSystemPrompt();
+			emptyInput = Core::App().settings().sploxEmptyInput();
+			model = Core::App().settings().sploxResponseModelName();
+			token = QString("Bearer %1").arg(Core::App().settings().sploxResponseBearerToken());
+		}
+
+        // Create network request
+        QNetworkRequest request((QUrl(apiUrl))); // Fixed: Create QNetworkRequest object with QUrl
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        request.setRawHeader("Authorization", token.toUtf8());
+ 
+        // Prepare JSON payload
+        QJsonObject message1;
+        message1["role"] = "system";
+        message1["content"] = QString(systemPrompt + "\n\n" + history);
+
+        QJsonObject message2;
+        message2["role"] = "user"; 
+        message2["content"] = text.isEmpty() ? QString(emptyInput) : text;
+
+        QJsonArray messages;
+        messages.append(message1);
+        messages.append(message2);
+
+        QJsonObject payload;
+        payload["model"] = QString(model);
+        payload["messages"] = messages;
+        payload["stream"] = false;
+
+        QJsonDocument doc(payload);
+        
+        // Make POST request
+        auto reply = networkManager->post(request, doc.toJson());
+        
+        // Handle response
+        QObject::connect(reply, &QNetworkReply::finished, [=]() {
+            const auto data = reply->readAll();
+            const auto json = QJsonDocument::fromJson(data);
+            
+            if (json.isObject()) {
+                const auto obj = json.object();
+                const auto choices = obj["choices"].toArray();
+                if (!choices.isEmpty()) {
+                    const auto message = choices[0].toObject()["message"].toObject();
+                    const auto content = message["content"].toString();
+                    
+                    field->setTextWithTags({
+                        content,
+                        field->getTextWithTags().tags
+                    });
+                }
+            }
+            
+            if (reply->error() != QNetworkReply::NoError) {
+                LOG(("AI API Error: %1").arg(reply->errorString()));
+            }
+            
+            reply->deleteLater();
+        });
+    };
+
+    // Connect button click to API request
+    generateButton->setClickedCallback([=] {
+        const auto text = field->getTextWithTags().text;
+        // Remove the text emptiness check
+        makeApiRequest(text);
+    });
+}
 [[nodiscard]] bool IsGoodFactcheckUrl(QStringView url) {
 	return url.startsWith(u"t.me/"_q) || url.startsWith(u"https://t.me/"_q);
 }
@@ -825,7 +986,7 @@ AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 				if (!features.autocompleteMentions) {
 					return {};
 				}
-				if ((position - fragmentPosition - i < 1 || text[i].isLetter()) && (i < 2 || !(text[i - 2].isLetterOrNumber() || text[i - 2] == '_'))) {
+				if ((position - fragmentPosition - i < 1 || text[i].isLetter()) && (i < 2 || !(text[i - 2].isLetterOrNumber() || text[i - 2] == '_')) && !mentionInCommand) {
 					result.fromStart = (i == 1) && (fragmentPosition == 0);
 					result.query = text.mid(i - 1, position - fragmentPosition - i + 1);
 				} else if ((position - fragmentPosition - i < 1 || text[i].isLetter()) && i > 2 && (text[i - 2].isLetterOrNumber() || text[i - 2] == '_') && !mentionInCommand) {

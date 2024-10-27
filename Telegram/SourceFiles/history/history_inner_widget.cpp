@@ -100,6 +100,19 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtWidgets/QApplication>
 #include <QtCore/QMimeData>
 
+#include <QtCore/QMimeData>
+#include <QtCore/QStack>
+#include <QtCore/QJsonArray>
+#include <QtCore/QJsonObject>
+#include <QtCore/QJsonDocument>
+#include <QtGui/QGuiApplication>
+#include <QtGui/QTextBlock>
+#include <QtGui/QClipboard>
+#include <QtWidgets/QApplication>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkRequest>
+#include <QtNetwork/QNetworkReply>
+
 namespace {
 
 constexpr auto kScrollDateHideTimeout = 1000;
@@ -2824,6 +2837,16 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 							[=] { copyContextText(itemId); },
 							&st::menuIconCopy);
 					}
+
+
+					if (view->hasVisibleText() || mediaHasTextForCopy) {
+						_menu->addAction(
+							tr::lng_context_zhopa(tr::now),
+							[=] { proofcheckText(itemId); },
+							&st::menuIconSplox);
+					} 
+
+
 					if ((!item->translation() || !_history->translatedTo())
 						&& (view->hasVisibleText() || mediaHasTextForCopy)) {
 						const auto translate = mediaHasTextForCopy
@@ -3137,6 +3160,126 @@ void HistoryInner::copyContextText(FullMsgId itemId) {
 			}
 		}
 	}
+}
+
+
+void HistoryInner::proofcheckText(FullMsgId itemId) {
+    if (const auto item = session().data().message(itemId)) {
+        const auto textForMime = [&] {
+            if (const auto group = session().data().groups().find(item)) {
+                return TextForMimeData::Simple(HistoryGroupText(group).expanded);
+            } else {
+                return TextForMimeData::Simple(HistoryItemText(item).expanded);
+            }
+        }();
+
+		QString apiUrl; 
+		QString systemPrompt;	
+		QString model;
+		QString token;
+
+		if (Core::App().settings().sploxEnabled()) {
+			apiUrl = Core::App().settings().kSploxInternalFactCheckURL;
+			systemPrompt = "";
+			model = "";
+			token = "";
+		} else {
+			apiUrl = Core::App().settings().sploxFactCheckURL();
+			systemPrompt = Core::App().settings().sploxFactCheckSystemPrompt();
+			model = Core::App().settings().sploxFactCheckModelName();
+			token = QString("Bearer %1").arg(Core::App().settings().sploxFactCheckBearerToken());
+		}
+
+        // Create network request
+        QNetworkRequest request((QUrl(apiUrl))); // Fixed: Create QNetworkRequest object with QUrl
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        request.setRawHeader("Authorization", token.toUtf8());
+
+
+        QJsonObject message1;
+        message1["role"] = "system";
+        message1["content"] = QString(systemPrompt);
+
+        QJsonObject message2;
+        message2["role"] = "user"; 
+        message2["content"] = QString(textForMime.expanded);
+
+        QJsonArray messages;
+        messages.append(message1);
+        messages.append(message2);
+
+        QJsonObject payload;
+        payload["model"] = QString(model);
+        payload["messages"] = messages;
+        payload["stream"] = false;
+
+        QJsonDocument doc(payload);
+        
+        // Make POST request
+        auto networkManager = new QNetworkAccessManager(this);
+        auto reply = networkManager->post(request, doc.toJson());
+        
+        // Handle response
+        QObject::connect(reply, &QNetworkReply::finished, [=]() {
+            const auto data = reply->readAll();
+            const auto json = QJsonDocument::fromJson(data);
+            
+            if (json.isObject()) {
+                const auto obj = json.object();
+                const auto choices = obj["choices"].toArray();
+                if (!choices.isEmpty()) {
+                    const auto message = choices[0].toObject()["message"].toObject();
+                    const auto content = message["content"].toString();
+                    const auto existingText = item->originalText();
+
+                    // Create combined text with original and AI analysis
+                    TextWithEntities text;
+                    text.text = existingText.text;
+                    text.entities = existingText.entities;
+                    
+                    // Add two newlines as separator
+                    text.text += "\n\n";
+                    const auto originalLength = text.text.size();
+                    
+                    // Add AI analysis
+                    const auto aiPrefix = QString("\n");
+                    text.text += aiPrefix + content;
+
+                    // Add blockquote entity first (so it covers everything including URLs)
+                    text.entities.push_back({
+                        EntityType::Blockquote,
+                        originalLength,
+                        aiPrefix.size() + content.size(),
+                        QString()
+                    });
+
+                    // Then add URL entities on top
+                    QRegularExpression urlRegex(QString("\\b(https?://\\S+)\\b"));
+                    auto matchIterator = urlRegex.globalMatch(content);
+                    while (matchIterator.hasNext()) {
+                        auto match = matchIterator.next();
+                        const auto start = originalLength + aiPrefix.size() + match.capturedStart();
+                        const auto length = match.capturedLength();
+                        
+                        text.entities.push_back({
+                            EntityType::Url,
+                            start,
+                            length,
+                            match.captured(1)
+                        });
+                    }
+
+                    // Update the message with the new text and entities
+                    item->setText(text);
+                    updateSize();
+                    update();
+                }
+            }
+            
+            reply->deleteLater();
+            networkManager->deleteLater();
+        });
+    }
 }
 
 void HistoryInner::resizeEvent(QResizeEvent *e) {

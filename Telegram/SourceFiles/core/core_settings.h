@@ -109,6 +109,9 @@ public:
 		TrayOnly = 1,
 		WindowOnly = 2,
 	};
+	
+    static const QString kSploxInternalURL;
+    static const QString kSploxInternalFactCheckURL;
 
 	static constexpr auto kDefaultVolume = 0.9;
 
@@ -216,7 +219,23 @@ public:
 	void setNotifyView(NotifyView value) {
 		_notifyView = value;
 	}
+	
 
+
+    void setSploxEnabled(bool value) {
+        _sploxEnabled = value;
+    }
+    [[nodiscard]] bool sploxEnabled() const {
+        return _sploxEnabled.current();
+    }
+    [[nodiscard]] rpl::producer<bool> sploxEnabledValue() const {
+        return _sploxEnabled.value();
+    }
+    [[nodiscard]] rpl::producer<bool> sploxEnabledChanges() const {
+        return _sploxEnabled.changes();
+    }
+
+	
 	[[nodiscard]] bool nativeNotifications() const;
 	void setNativeNotifications(bool value);
 
@@ -942,13 +961,147 @@ public:
 
 	void resetOnLastLogout();
 
+	void setSploxURL(const QString &url) {
+		_sploxURL = url;
+	}
+	[[nodiscard]] QString sploxURL() const {
+		return _sploxURL.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxURLValue() const {
+		return _sploxURL.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxURLChanges() const {
+		return _sploxURL.changes();
+	}
+
+	void setSploxFactCheckURL(const QString &url) {
+		_sploxFactCheckURL = url;
+	}
+	[[nodiscard]] QString sploxFactCheckURL() const {
+		return _sploxFactCheckURL.current();
+	}	
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckURLValue() const {
+		return _sploxFactCheckURL.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckURLChanges() const {
+		return _sploxFactCheckURL.changes();
+	}
+
+	void setSploxResponseBearerToken(const QString &token) {
+		_sploxResponseBearerToken = token;
+	}
+	[[nodiscard]] QString sploxResponseBearerToken() const {
+		return _sploxResponseBearerToken.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxResponseBearerTokenValue() const {
+		return _sploxResponseBearerToken.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxResponseBearerTokenChanges() const {
+		return _sploxResponseBearerToken.changes();
+	}
+
+	void setSploxFactCheckBearerToken(const QString &token) {
+		_sploxFactCheckBearerToken = token;
+	}
+	[[nodiscard]] QString sploxFactCheckBearerToken() const {
+		return _sploxFactCheckBearerToken.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckBearerTokenValue() const {
+		return _sploxFactCheckBearerToken.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckBearerTokenChanges() const {
+		return _sploxFactCheckBearerToken.changes();
+	}
+
+	void setSploxSystemPrompt(const QString &prompt) {
+		_sploxSystemPrompt = prompt;
+	}
+	[[nodiscard]] QString sploxSystemPrompt() const {
+		return _sploxSystemPrompt.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxSystemPromptValue() const {
+		return _sploxSystemPrompt.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxSystemPromptChanges() const {
+		return _sploxSystemPrompt.changes();
+	}
+
+	void setSploxResponseModelName(const QString &modelName) {
+		_sploxResponseModelName = modelName;
+	}
+	[[nodiscard]] QString sploxResponseModelName() const {
+		return _sploxResponseModelName.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxResponseModelNameValue() const {
+		return _sploxResponseModelName.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxResponseModelNameChanges() const {
+		return _sploxResponseModelName.changes();
+	}
+
+	void setSploxFactCheckModelName(const QString &modelName) {
+		_sploxFactCheckModelName = modelName;
+	}
+	[[nodiscard]] QString sploxFactCheckModelName() const {
+		return _sploxFactCheckModelName.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckModelNameValue() const {
+		return _sploxFactCheckModelName.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckModelNameChanges() const {
+		return _sploxFactCheckModelName.changes();
+	}
+
+	// lng_settings_response_fact_check_system_prompt
+	void setSploxFactCheckSystemPrompt(const QString &prompt) {
+		_sploxFactCheckSystemPrompt = prompt;
+	}
+	[[nodiscard]] QString sploxFactCheckSystemPrompt() const {
+		return _sploxFactCheckSystemPrompt.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckSystemPromptValue() const {
+		return _sploxFactCheckSystemPrompt.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckSystemPromptChanges() const {
+		return _sploxFactCheckSystemPrompt.changes();
+	}
+
+	void setSploxEmptyInput(const QString &input) {
+		_sploxEmptyInput = input;
+	}
+	[[nodiscard]] QString sploxEmptyInput() const {
+		return _sploxEmptyInput.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxEmptyInputValue() const {
+		return _sploxEmptyInput.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxEmptyInputChanges() const {
+		return _sploxEmptyInput.changes();
+	}	
+
+	
+	// sploxMessageContextLength
+	void setSploxMessageContextLength(int length) {
+		_sploxMessageContextLength = length;
+	}
+	[[nodiscard]] int sploxMessageContextLength() const {
+		return _sploxMessageContextLength.current();
+	}
+	[[nodiscard]] rpl::producer<int> sploxMessageContextLengthValue() const {
+		return _sploxMessageContextLength.value();
+	}
+	[[nodiscard]] rpl::producer<int> sploxMessageContextLengthChanges() const {
+		return _sploxMessageContextLength.changes();
+	}
+
+
+
 private:
 	void resolveRecentEmoji() const;
 
 	static constexpr auto kDefaultThirdColumnWidth = 0;
 	static constexpr auto kDefaultDialogsWidthRatio = 5. / 14;
 	static constexpr auto kDefaultBigDialogsWidthRatio = 0.275;
-
 	struct RecentEmojiPreload {
 		QString emoji;
 		ushort rating = 0;
@@ -1079,6 +1232,19 @@ private:
 	bool _recordVideoMessages = false;
 
 	QByteArray _photoEditorBrush;
+
+	rpl::variable<QString> _sploxURL = u"your_url"_q; // Add default URL
+	rpl::variable<QString> _sploxFactCheckURL = u"your_url"_q; // Add default URL
+	rpl::variable<QString> _sploxResponseBearerToken = u"your_token"_q; // Add default token
+	rpl::variable<QString> _sploxFactCheckBearerToken = u"your_token"_q; // Add default token
+	rpl::variable<QString> _sploxSystemPrompt = u"You are a helpful assistant."_q; // Add default prompt
+	rpl::variable<QString> _sploxFactCheckSystemPrompt = u"You are a helpful assistant."_q; // Add default prompt
+	rpl::variable<QString> _sploxEmptyInput = u"Answer briefly to the last message."_q; // Add default empty input
+	rpl::variable<QString> _sploxResponseModelName = "your_model"_q; // Add default model name
+	rpl::variable<QString> _sploxFactCheckModelName = "your_model"_q; // Add default model name
+	rpl::variable<int> _sploxMessageContextLength = 50; // Add default context length
+	rpl::variable<bool> _sploxEnabled = true;
+	
 
 };
 

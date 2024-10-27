@@ -128,6 +128,8 @@ public:
 	void repaintItem(const HistoryItem *item);
 	void repaintItem(const Element *view);
 
+	void proofcheckText(FullMsgId itemId);
+
 	[[nodiscard]] bool canCopySelected() const;
 	[[nodiscard]] bool canDeleteSelected() const;
 

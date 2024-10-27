@@ -21,6 +21,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/section_widget.h"
 
 namespace Core {
+
+const QString Settings::kSploxInternalURL = u"https://splox.io/v1/chat/response"_q;
+const QString Settings::kSploxInternalFactCheckURL = u"https://splox.io/v1/chat/factcheck"_q;
+
 namespace {
 
 [[nodiscard]] WindowPosition Deserialize(const QByteArray &data) {
@@ -124,7 +128,19 @@ Settings::Settings()
 , _floatPlayerColumn(Window::Column::Second)
 , _floatPlayerCorner(RectPart::TopRight)
 , _dialogsWithChatWidthRatio(DefaultDialogsWidthRatio())
-, _dialogsNoChatWidthRatio(DefaultDialogsWidthRatio()) {
+, _dialogsNoChatWidthRatio(DefaultDialogsWidthRatio())
+, _sploxURL(u"your_url"_q)
+, _sploxFactCheckURL(u"your_url"_q) 
+, _sploxResponseBearerToken(u"your_token"_q)
+, _sploxFactCheckBearerToken(u"your_token"_q)
+, _sploxSystemPrompt(u"You are a helpful assistant."_q)
+, _sploxFactCheckSystemPrompt(u"You are a helpful assistant."_q)
+, _sploxEmptyInput(u"Answer briefly to the last message."_q)
+, _sploxResponseModelName("your_model"_q)
+, _sploxFactCheckModelName("your_model"_q)
+, _sploxMessageContextLength(50)
+, _sploxEnabled(true)
+ {
 }
 
 Settings::~Settings() = default;
@@ -223,6 +239,39 @@ QByteArray Settings::serialize() const {
 		+ sizeof(qint32) * 3
 		+ Serialize::bytearraySize(_tonsiteStorageToken)
 		+ sizeof(qint32) * 4;
+
+	// Add size for sploxURL
+	size += Serialize::stringSize(_sploxURL.current());
+
+	// Add size for sploxFactCheckURL
+	size += Serialize::stringSize(_sploxFactCheckURL.current());
+
+	// Add size for sploxResponseBearerToken
+	size += Serialize::stringSize(_sploxResponseBearerToken.current());
+
+	// Add size for sploxFactCheckBearerToken
+	size += Serialize::stringSize(_sploxFactCheckBearerToken.current());
+
+	// Add size for sploxSystemPrompt
+	size += Serialize::stringSize(_sploxSystemPrompt.current());
+
+	// Add size for sploxResponseModelName
+	size += Serialize::stringSize(_sploxResponseModelName.current());
+
+	// Add size for sploxFactCheckModelName
+	size += Serialize::stringSize(_sploxFactCheckModelName.current());
+
+	// Add size for sploxFactCheckSystemPrompt
+	size += Serialize::stringSize(_sploxFactCheckSystemPrompt.current());
+
+	// Add size for sploxEmptyInput
+	size += Serialize::stringSize(_sploxEmptyInput.current());
+
+	// Add size for sploxMessageContextLength
+	size += sizeof(qint32);
+
+	// Add size for sploxEnabled
+	size += sizeof(qint32);
 
 	auto result = QByteArray();
 	result.reserve(size);
@@ -380,7 +429,19 @@ QByteArray Settings::serialize() const {
 			<< qint32(_includeMutedCounterFolders ? 1 : 0)
 			<< qint32(_ivZoom.current())
 			<< qint32(_skipToastsInFocus ? 1 : 0)
-			<< qint32(_recordVideoMessages ? 1 : 0);
+			<< qint32(_recordVideoMessages ? 1 : 0)
+			<< _sploxURL.current() // Add sploxURL serialization
+			<< _sploxResponseBearerToken.current() // Add sploxResponseBearerToken serialization
+			<< _sploxFactCheckURL.current() // Add sploxFactCheckURL serialization
+			<< _sploxFactCheckBearerToken.current() // Add sploxFactCheckBearerToken serialization
+			<< _sploxResponseModelName.current() // Add sploxResponseModelName serialization
+			<< _sploxFactCheckModelName.current() // Add sploxFactCheckModelName serialization
+			<< _sploxSystemPrompt.current() // Add sploxSystemPrompt serialization
+			<< _sploxFactCheckSystemPrompt.current() // Add sploxFactCheckSystemPrompt serialization
+			<< _sploxEmptyInput.current() // Add sploxEmptyInput serialization
+			<< qint32(_sploxMessageContextLength.current()) // Serialize _sploxMessageContextLength
+			<< qint32(_sploxEnabled.current() ? 1 : 0); // Serialize _sploxEnabled
+	
 	}
 
 	Ensures(result.size() == size);
@@ -394,7 +455,17 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 
 	QDataStream stream(serialized);
 	stream.setVersion(QDataStream::Qt_5_1);
-
+	QString sploxURL = u"your_url"_q; // Default value
+	QString sploxSystemPrompt = u"You are a helpful assistant."_q; // Default prompt
+	QString sploxFactCheckSystemPrompt = u"You are a helpful assistant."_q; // Default prompt
+	QString sploxEmptyInput = u"Answer briefly to the last message."_q; // Default empty input
+	QString sploxResponseModelName = "your_model"_q; // Default model name
+	QString sploxFactCheckModelName = "your_model"_q; // Default model name
+	QString sploxFactCheckURL = u"your_url"_q; // Default value
+	QString sploxResponseBearerToken = u"your_token"_q; // Default token
+	QString sploxFactCheckBearerToken = u"your_token"_q; // Default token
+	int sploxMessageContextLength = 50; // Default context length
+	bool sploxEnabled = false;
 	QByteArray themesAccentColors;
 	qint32 adaptiveForWide = _adaptiveForWide.current() ? 1 : 0;
 	qint32 moderateModeEnabled = _moderateModeEnabled ? 1 : 0;
@@ -825,6 +896,53 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	if (!stream.atEnd()) {
 		stream >> recordVideoMessages;
 	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxURL;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxFactCheckURL;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxResponseBearerToken;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxFactCheckBearerToken;
+	}
+
+
+	if (!stream.atEnd()) {
+		stream >> sploxSystemPrompt;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxResponseModelName;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxFactCheckModelName;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxFactCheckSystemPrompt;
+	}
+	
+	if (!stream.atEnd()) {
+		stream >> sploxEmptyInput;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxMessageContextLength;
+	}
+
+	if (!stream.atEnd()) {
+		stream >> sploxEnabled;
+	}
+
+
 	if (stream.status() != QDataStream::Ok) {
 		LOG(("App Error: "
 			"Bad data for Core::Settings::constructFromSerialized()"));
@@ -1039,6 +1157,17 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	_ivZoom = ivZoom;
 	_skipToastsInFocus = (skipToastsInFocus == 1);
 	_recordVideoMessages = (recordVideoMessages == 1);
+	_sploxURL = sploxURL;
+	_sploxFactCheckURL = sploxFactCheckURL;
+	_sploxResponseBearerToken = sploxResponseBearerToken;
+	_sploxFactCheckBearerToken = sploxFactCheckBearerToken;
+	_sploxSystemPrompt = sploxSystemPrompt;
+	_sploxResponseModelName = sploxResponseModelName;
+	_sploxFactCheckModelName = sploxFactCheckModelName;
+	_sploxFactCheckSystemPrompt = sploxFactCheckSystemPrompt;
+	_sploxEmptyInput = sploxEmptyInput;
+	_sploxMessageContextLength = sploxMessageContextLength;
+	_sploxEnabled = sploxEnabled;
 }
 
 QString Settings::getSoundPath(const QString &key) const {
@@ -1428,8 +1557,18 @@ void Settings::resetOnLastLogout() {
 	_storiesClickTooltipHidden = false;
 	_ttlVoiceClickTooltipHidden = false;
 	_ivZoom = 100;
-	_recordVideoMessages = false;
-
+    _recordVideoMessages = false;
+    _sploxURL = u"your_url"_q; // Reset to default URL
+	_sploxFactCheckURL = u"your_url"_q; // Reset to default URL
+	_sploxResponseBearerToken = u"your_token"_q; // Reset to default token	
+	_sploxFactCheckBearerToken = u"your_token"_q; // Reset to default token
+	_sploxSystemPrompt = u"You are a helpful assistant."_q; // Reset to default prompt
+	_sploxFactCheckSystemPrompt = u"You are a helpful assistant."_q; // Reset to default prompt
+	_sploxEmptyInput = u"Answer briefly to the last message."_q; // Reset to default empty input
+	_sploxResponseModelName = "your_model"_q; // Reset to default model name
+	_sploxFactCheckModelName = "your_model"_q; // Reset to default model name
+	_sploxMessageContextLength = 50; // Reset to default context length
+	_sploxEnabled = true;
 	_recentEmojiPreload.clear();
 	_recentEmoji.clear();
 	_emojiVariants.clear();
@@ -1563,6 +1702,7 @@ void Settings::setSkipTranslationLanguages(
 auto Settings::skipTranslationLanguages() const -> std::vector<LanguageId> {
 	return NonEmptySkipList(_skipTranslationLanguages.current());
 }
+
 
 auto Settings::skipTranslationLanguagesValue() const
 -> rpl::producer<std::vector<LanguageId>> {

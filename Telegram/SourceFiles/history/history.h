@@ -698,3 +698,4 @@ protected:
 	int _indexInHistory = -1;
 
 };
+

@@ -70,10 +70,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_settings.h"
 #include "styles/style_info.h"
 #include "styles/style_menu_icons.h"
-
+#include "ui/widgets/fields/number_input.h"
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
 #include <QtGui/QWindow>
+#include "ui/widgets/fields/input_field.h"
 
 namespace Settings {
 namespace {
@@ -361,6 +362,168 @@ void SetupPowerSavingButton(
 	});
 }
 
+
+
+void SetupSploxButtons(
+        not_null<Window::SessionController*> controller,
+        not_null<Ui::VerticalLayout*> container) {
+    // Add toggle button
+    const auto sploxToggle = AddButtonWithIcon(
+        container,
+        tr::lng_settings_splox_enable(),
+        st::settingsButton,
+        { &st::menuIconLink }
+    )->toggleOn(rpl::single(
+        Core::App().settings().sploxEnabled()
+    ) | rpl::then(
+        Core::App().settings().sploxEnabledChanges()
+    ));
+
+    sploxToggle->toggledValue(
+    ) | rpl::start_with_next([=](bool enabled) {
+        Core::App().settings().setSploxEnabled(enabled);
+        Core::App().saveSettingsDelayed();
+    }, sploxToggle->lifetime());
+
+    // Add URL button that's only enabled when Splox is disabled
+    const auto urlButton = AddButtonWithLabel(
+        container,
+        tr::lng_settings_custom_url(),
+        rpl::single(
+            Core::App().settings().sploxURL()
+        ) | rpl::then(
+            Core::App().settings().sploxURLChanges()
+        ),
+        st::settingsButton,
+        { &st::menuIconLink });
+
+    Core::App().settings().sploxEnabledValue(
+    ) | rpl::start_with_next([=](bool enabled) {
+        urlButton->setEnabled(!enabled);
+    }, urlButton->lifetime());
+
+    urlButton->addClickHandler([=] {
+        if (Core::App().settings().sploxEnabled()) {
+            return;
+        }
+        controller->show(Box([=](not_null<Ui::GenericBox*> box) {
+            // URL field
+            const auto url = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_custom_url(),
+                Core::App().settings().sploxURL()));
+            
+
+			const auto responseBearerToken = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_custom_url_token(),
+                Core::App().settings().sploxResponseBearerToken()));
+
+
+            // System prompt field
+            const auto prompt = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_response_system_prompt(),
+                Core::App().settings().sploxSystemPrompt()));
+
+			// Response model name field
+			const auto responseModelName = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_response_model_name(),
+                Core::App().settings().sploxResponseModelName()));
+
+			// Fact check URL field
+			const auto factCheckURL = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_fact_check_url(),
+                Core::App().settings().sploxFactCheckURL()));
+
+			// Fact check bearer token field
+			const auto factCheckBearerToken = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_fact_check_url_token(),
+                Core::App().settings().sploxFactCheckBearerToken()));
+
+			// Response bearer token field
+			// Fact check system prompt field
+			const auto factCheckPrompt = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_response_fact_check_system_prompt(),
+                Core::App().settings().sploxFactCheckSystemPrompt()));
+
+			// Fact check model name field
+			const auto factCheckModelName = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_fact_check_model_name(),
+                Core::App().settings().sploxFactCheckModelName()));
+
+			// Empty input field
+			const auto emptyInput = box->addRow(object_ptr<Ui::InputField>(
+                box,
+                st::defaultInputField,
+                tr::lng_settings_empty_input(),
+                Core::App().settings().sploxEmptyInput()));
+
+			const auto messageContextLength = box->addRow(
+				object_ptr<Ui::InputField>(
+					box,
+					st::defaultInputField,
+					tr::lng_settings_message_context_length(),
+					QString::number(Core::App().settings().sploxMessageContextLength())
+				),
+				st::boxRowPadding
+			);
+						// Add number validation
+			messageContextLength->setMaxLength(3); // Limit to 3 digits since max is 200
+
+			box->addButton(tr::lng_settings_save(), [=] {
+                const auto urlText = url->getLastText();
+                const auto promptText = prompt->getLastText();
+				const auto factCheckURLText = factCheckURL->getLastText();
+				const auto factCheckPromptText = factCheckPrompt->getLastText();
+				const auto responseBearerTokenText = responseBearerToken->getLastText();
+				const auto factCheckBearerTokenText = factCheckBearerToken->getLastText();
+				const auto responseModelNameText = responseModelName->getLastText();
+				const auto factCheckModelNameText = factCheckModelName->getLastText();
+				const auto emptyInputText = emptyInput->getLastText();
+
+				
+                Core::App().settings().setSploxURL(urlText);
+				Core::App().settings().setSploxResponseBearerToken(responseBearerTokenText);
+                Core::App().settings().setSploxSystemPrompt(promptText);
+				Core::App().settings().setSploxFactCheckURL(factCheckURLText);
+				Core::App().settings().setSploxFactCheckBearerToken(factCheckBearerTokenText);
+				Core::App().settings().setSploxFactCheckSystemPrompt(factCheckPromptText);
+				Core::App().settings().setSploxResponseModelName(responseModelNameText);
+				Core::App().settings().setSploxFactCheckModelName(factCheckModelNameText);
+				Core::App().settings().setSploxEmptyInput(emptyInputText);
+
+				bool ok = false;
+				const auto contextLength = messageContextLength->getLastText().toInt(&ok);
+				if (ok && contextLength >= 1 && contextLength <= 200) {
+					Core::App().settings().setSploxMessageContextLength(contextLength);
+				} else {
+					Core::App().settings().setSploxMessageContextLength(50); // Default value
+				}
+				
+                Core::App().saveSettingsDelayed();
+                box->closeBox();
+            });
+            box->addButton(tr::lng_cancel(), [=] {
+                box->closeBox();
+            });
+        }));
+    });
+}
+
 void SetupLanguageButton(
 		not_null<Window::Controller*> window,
 		not_null<Ui::VerticalLayout*> container) {
@@ -484,6 +647,7 @@ void SetupSections(
 
 	SetupPowerSavingButton(&controller->window(), container);
 	SetupLanguageButton(&controller->window(), container);
+    SetupSploxButtons(controller, container); // Add this line
 
 	Ui::AddSkip(container);
 }

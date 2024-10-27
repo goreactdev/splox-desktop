@@ -63,6 +63,7 @@ public:
 	Fn<void()> createSpoilerRepaint(const std::any &context) override;
 
 	QString phraseContextCopyText() override;
+	QString phraseContextZhopa() override;
 	QString phraseContextCopyEmail() override;
 	QString phraseContextCopyLink() override;
 	QString phraseContextCopySelected() override;

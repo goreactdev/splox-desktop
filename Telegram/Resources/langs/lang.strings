@@ -609,6 +609,25 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_auto_start_disabled_uwp" = "Starting with the system was disabled in Windows Settings.\n\nPlease enable Telegram Desktop in the Startup Apps Settings.";
 "lng_settings_open_system_settings" = "Open Settings";
 "lng_settings_add_sendto" = "Place Telegram in \"Send to\" menu";
+
+"lng_settings_custom_url" = "Response LLM URL";
+"lng_settings_fact_check_url" = "Fact check LLM URL";
+
+"lng_settings_response_model_name" = "Response Model name (mandatory)";
+"lng_settings_fact_check_model_name" = "Fact Check Model name (mandatory)";
+"lng_settings_message_context_length" = "Limit (message context length)";
+
+
+"lng_settings_empty_input" = "Empty Input Response";
+
+"lng_settings_custom_url_token" = "Response LLM Bearer Token (optional)";
+"lng_settings_fact_check_url_token" = "Fact check LLM Bearer Token (optional)";
+
+
+"lng_settings_response_system_prompt" = "Response System Prompt";
+"lng_settings_response_fact_check_system_prompt" = "Fact Check System Prompt";
+
+"lng_settings_splox_enable" = "Enable Splox AI";
 "lng_settings_mac_warn_before_quit" = "Show warning before quitting with {text}";
 "lng_settings_mac_round_icon" = "Round application icon";
 
@@ -3504,6 +3523,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_context_pack_add" = "Add Stickers";
 "lng_context_save_file" = "Save As...";
 "lng_context_copy_text" = "Copy Text";
+"lng_context_zhopa" = "Fact Check";
 "lng_context_open_gif" = "Open GIF";
 "lng_context_save_gif" = "Add to GIFs";
 "lng_context_delete_gif" = "Delete";

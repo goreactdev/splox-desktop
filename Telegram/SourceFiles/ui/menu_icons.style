@@ -82,6 +82,7 @@ menuIconViolence: icon {{ "menu/violence", menuIconColor }};
 menuIconMuteFor: icon {{ "menu/mute_for", menuIconColor }};
 menuIconSilent: icon {{ "menu/silent", menuIconColor }};
 menuIconCustomize: icon {{ "menu/customize", menuIconColor }};
+menuIconSplox: icon {{ "menu/splox", menuIconColor }};
 menuIconSoundOn: icon {{ "menu/sound_enable", menuIconColor }};
 menuIconSoundOff: icon {{ "menu/sound_disable", menuIconColor }};
 menuIconSoundSelect: icon {{ "menu/sound_select", menuIconColor }};

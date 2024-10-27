@@ -313,6 +313,10 @@ QString UiIntegration::phraseContextCopyText() {
 	return tr::lng_context_copy_text(tr::now);
 }
 
+QString UiIntegration::phraseContextZhopa() {
+	return tr::lng_context_zhopa(tr::now);
+}
+
 QString UiIntegration::phraseContextCopyEmail() {
 	return tr::lng_context_copy_email(tr::now);
 }

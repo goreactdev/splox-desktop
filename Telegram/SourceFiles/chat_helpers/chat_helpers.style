@@ -901,6 +901,17 @@ historyBusinessBotSettings: IconButton(defaultIconButton) {
 	width: 48px;
 }
 
+sploxGenerate: IconButton(defaultIconButton) {
+	icon: icon{{ "menu/splox", menuIconFg }};
+	iconOver: icon{{ "menu/splox", menuIconFgOver }};
+	iconPosition: point(-1px, -1px);
+	rippleAreaSize: 40px;
+	rippleAreaPosition: point(4px, 9px);
+	ripple: defaultRippleAnimationBgOver;
+	height: 58px;
+	width: 48px;	
+}
+
 historyReplyCancelIcon: icon {{ "box_button_close", historyReplyCancelFg }};
 historyReplyCancelIconOver: icon {{ "box_button_close", historyReplyCancelFgOver }};
 
