@@ -2839,12 +2839,12 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 							&st::menuIconCopy);
 					}
 
-
+// dd
 					if (view->hasVisibleText() || mediaHasTextForCopy) {
 						_menu->addAction(
 							tr::lng_context_zhopa(tr::now),
 							[=] { proofcheckText(itemId); },
-							&st::menuIconSplox);
+							&st::menuIconSplox); // 
 					} 
 
 
