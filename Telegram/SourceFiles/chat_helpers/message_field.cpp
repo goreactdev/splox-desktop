@@ -528,7 +528,7 @@ void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
 
     // Function to make API request
     const auto makeApiRequest = [=](const QString &text) {
-        // Get recent chat history
+        // Get recent chat history dd
         const auto history = getRecentHistory();
         
 		QString apiUrl; 

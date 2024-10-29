@@ -1628,7 +1628,7 @@ auto Settings::DeserializePlaybackSpeed(qint32 speed) -> PlaybackSpeed {
 		};
 	};
 	if (speed >= 0 && speed < 10) {
-		// The old values in settings.
+		// The old values in settings. d
 		return validate((std::clamp(speed, 0, 6) + 2) / 4.);
 	} else if (speed < 0) {
 		speed = -speed;
