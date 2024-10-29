@@ -372,7 +372,7 @@ void SetupSploxButtons(
         container,
         tr::lng_settings_splox_enable(),
         st::settingsButton,
-        { &st::menuIconLink }
+        { &st::menuIconSplox }
     )->toggleOn(rpl::single(
         Core::App().settings().sploxEnabled()
     ) | rpl::then(
@@ -385,6 +385,47 @@ void SetupSploxButtons(
         Core::App().saveSettingsDelayed();
     }, sploxToggle->lifetime());
 
+
+	const auto tokenButton = AddButtonWithLabel(
+			container,
+			tr::lng_settings_splox_token(),
+			rpl::single(
+				Core::App().settings().sploxToken()
+			) | rpl::then(
+				Core::App().settings().sploxTokenChanges()
+			),
+			st::settingsButton,
+			{ &st::menuIconSplox });
+
+		Core::App().settings().sploxEnabledValue(
+		) | rpl::start_with_next([=](bool enabled) {
+			tokenButton->setEnabled(enabled);
+		}, tokenButton->lifetime());
+
+		tokenButton->addClickHandler([=] {
+			if (!Core::App().settings().sploxEnabled()) {
+				return;
+			}
+			controller->show(Box([=](not_null<Ui::GenericBox*> box) {
+				const auto token = box->addRow(object_ptr<Ui::InputField>(
+					box,
+					st::defaultInputField,
+					tr::lng_settings_splox_token(),
+					Core::App().settings().sploxToken()));
+
+				box->addButton(tr::lng_settings_save(), [=] {
+					const auto tokenText = token->getLastText();
+					Core::App().settings().setSploxToken(tokenText);
+					Core::App().saveSettingsDelayed();
+					box->closeBox();
+				});
+				box->addButton(tr::lng_cancel(), [=] {
+					box->closeBox();
+				});
+			}));
+		});
+
+
     // Add URL button that's only enabled when Splox is disabled
     const auto urlButton = AddButtonWithLabel(
         container,
@@ -396,6 +437,7 @@ void SetupSploxButtons(
         ),
         st::settingsButton,
         { &st::menuIconLink });
+
 
     Core::App().settings().sploxEnabledValue(
     ) | rpl::start_with_next([=](bool enabled) {

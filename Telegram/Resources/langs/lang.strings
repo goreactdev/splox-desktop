@@ -628,6 +628,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_settings_response_fact_check_system_prompt" = "Fact Check System Prompt";
 
 "lng_settings_splox_enable" = "Enable Splox AI";
+"lng_settings_splox_token" = "Splox Access Key";
+
 "lng_settings_mac_warn_before_quit" = "Show warning before quitting with {text}";
 "lng_settings_mac_round_icon" = "Round application icon";
 

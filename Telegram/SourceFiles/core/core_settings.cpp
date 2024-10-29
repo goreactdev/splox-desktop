@@ -138,6 +138,7 @@ Settings::Settings()
 , _sploxEmptyInput(u"Answer briefly to the last message."_q)
 , _sploxResponseModelName("your_model"_q)
 , _sploxFactCheckModelName("your_model"_q)
+, _sploxToken(u"your_token"_q)
 , _sploxMessageContextLength(50)
 , _sploxEnabled(true)
  {
@@ -255,11 +256,6 @@ QByteArray Settings::serialize() const {
 	// Add size for sploxSystemPrompt
 	size += Serialize::stringSize(_sploxSystemPrompt.current());
 
-	// Add size for sploxResponseModelName
-	size += Serialize::stringSize(_sploxResponseModelName.current());
-
-	// Add size for sploxFactCheckModelName
-	size += Serialize::stringSize(_sploxFactCheckModelName.current());
 
 	// Add size for sploxFactCheckSystemPrompt
 	size += Serialize::stringSize(_sploxFactCheckSystemPrompt.current());
@@ -267,11 +263,23 @@ QByteArray Settings::serialize() const {
 	// Add size for sploxEmptyInput
 	size += Serialize::stringSize(_sploxEmptyInput.current());
 
+	// Add size for sploxResponseModelName
+	size += Serialize::stringSize(_sploxResponseModelName.current());
+
+	// Add size for sploxFactCheckModelName
+	size += Serialize::stringSize(_sploxFactCheckModelName.current());
+
+
+	// Add size for sploxToken
+	size += Serialize::stringSize(_sploxToken.current());
+
 	// Add size for sploxMessageContextLength
 	size += sizeof(qint32);
 
 	// Add size for sploxEnabled
 	size += sizeof(qint32);
+
+
 
 	auto result = QByteArray();
 	result.reserve(size);
@@ -431,14 +439,15 @@ QByteArray Settings::serialize() const {
 			<< qint32(_skipToastsInFocus ? 1 : 0)
 			<< qint32(_recordVideoMessages ? 1 : 0)
 			<< _sploxURL.current() // Add sploxURL serialization
-			<< _sploxResponseBearerToken.current() // Add sploxResponseBearerToken serialization
 			<< _sploxFactCheckURL.current() // Add sploxFactCheckURL serialization
+			<< _sploxResponseBearerToken.current() // Add sploxResponseBearerToken serialization
 			<< _sploxFactCheckBearerToken.current() // Add sploxFactCheckBearerToken serialization
-			<< _sploxResponseModelName.current() // Add sploxResponseModelName serialization
-			<< _sploxFactCheckModelName.current() // Add sploxFactCheckModelName serialization
 			<< _sploxSystemPrompt.current() // Add sploxSystemPrompt serialization
 			<< _sploxFactCheckSystemPrompt.current() // Add sploxFactCheckSystemPrompt serialization
 			<< _sploxEmptyInput.current() // Add sploxEmptyInput serialization
+			<< _sploxResponseModelName.current() // Add sploxResponseModelName serialization
+			<< _sploxFactCheckModelName.current() // Add sploxFactCheckModelName serialization
+			<< _sploxToken.current() // Add sploxToken serialization
 			<< qint32(_sploxMessageContextLength.current()) // Serialize _sploxMessageContextLength
 			<< qint32(_sploxEnabled.current() ? 1 : 0); // Serialize _sploxEnabled
 	
@@ -456,14 +465,15 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	QDataStream stream(serialized);
 	stream.setVersion(QDataStream::Qt_5_1);
 	QString sploxURL = u"your_url"_q; // Default value
+	QString sploxFactCheckURL = u"your_url"_q; // Default value
+	QString sploxResponseBearerToken = u"your_token"_q; // Default token
+	QString sploxFactCheckBearerToken = u"your_token"_q; // Default token
 	QString sploxSystemPrompt = u"You are a helpful assistant."_q; // Default prompt
 	QString sploxFactCheckSystemPrompt = u"You are a helpful assistant."_q; // Default prompt
 	QString sploxEmptyInput = u"Answer briefly to the last message."_q; // Default empty input
 	QString sploxResponseModelName = "your_model"_q; // Default model name
 	QString sploxFactCheckModelName = "your_model"_q; // Default model name
-	QString sploxFactCheckURL = u"your_url"_q; // Default value
-	QString sploxResponseBearerToken = u"your_token"_q; // Default token
-	QString sploxFactCheckBearerToken = u"your_token"_q; // Default token
+	QString sploxToken = u"your_token"_q; // Default token
 	int sploxMessageContextLength = 50; // Default context length
 	bool sploxEnabled = true;
 	QByteArray themesAccentColors;
@@ -897,6 +907,8 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 		stream >> recordVideoMessages;
 	}
 
+
+
 	if (!stream.atEnd()) {
 		stream >> sploxURL;
 	}
@@ -919,6 +931,16 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	}
 
 	if (!stream.atEnd()) {
+		stream >> sploxFactCheckSystemPrompt;
+	}
+
+		
+	if (!stream.atEnd()) {
+		stream >> sploxEmptyInput;
+	}
+
+
+	if (!stream.atEnd()) {
 		stream >> sploxResponseModelName;
 	}
 
@@ -926,12 +948,9 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 		stream >> sploxFactCheckModelName;
 	}
 
+
 	if (!stream.atEnd()) {
-		stream >> sploxFactCheckSystemPrompt;
-	}
-	
-	if (!stream.atEnd()) {
-		stream >> sploxEmptyInput;
+		stream >> sploxToken;
 	}
 
 	if (!stream.atEnd()) {
@@ -939,7 +958,9 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	}
 
 	if (!stream.atEnd()) {
-		stream >> sploxEnabled;
+		qint32 sploxEnabledValue = 0;
+		stream >> sploxEnabledValue;
+		_sploxEnabled = (sploxEnabledValue == 1);
 	}
 
 
@@ -1162,10 +1183,11 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	_sploxResponseBearerToken = sploxResponseBearerToken;
 	_sploxFactCheckBearerToken = sploxFactCheckBearerToken;
 	_sploxSystemPrompt = sploxSystemPrompt;
-	_sploxResponseModelName = sploxResponseModelName;
-	_sploxFactCheckModelName = sploxFactCheckModelName;
 	_sploxFactCheckSystemPrompt = sploxFactCheckSystemPrompt;
 	_sploxEmptyInput = sploxEmptyInput;
+	_sploxResponseModelName = sploxResponseModelName;
+	_sploxFactCheckModelName = sploxFactCheckModelName;
+	_sploxToken = sploxToken;
 	_sploxMessageContextLength = sploxMessageContextLength;
 	_sploxEnabled = sploxEnabled;
 }
@@ -1567,6 +1589,7 @@ void Settings::resetOnLastLogout() {
 	_sploxEmptyInput = u"Answer briefly to the last message."_q; // Reset to default empty input
 	_sploxResponseModelName = "your_model"_q; // Reset to default model name
 	_sploxFactCheckModelName = "your_model"_q; // Reset to default model name
+	_sploxToken = u"your_token"_q; // Reset to default token
 	_sploxMessageContextLength = 50; // Reset to default context length
 	_sploxEnabled = true;
 	_recentEmojiPreload.clear();

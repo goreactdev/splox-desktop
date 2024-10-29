@@ -3174,7 +3174,7 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
             }
         }();
 
-		const auto user = session()->;
+		const auto user = session().user();
 
 		
         // Add loading blockquote
@@ -3202,7 +3202,7 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
 			apiUrl = Core::App().settings().kSploxInternalFactCheckURL;
 			systemPrompt = "";
 			model = "";
-			token = "";
+			token = QString("Bearer %1").arg(Core::App().settings().sploxToken());
 		} else {
 			apiUrl = Core::App().settings().sploxFactCheckURL();
 			systemPrompt = Core::App().settings().sploxFactCheckSystemPrompt();

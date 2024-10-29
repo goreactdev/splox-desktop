@@ -541,7 +541,7 @@ void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
 			systemPrompt = "";
 			emptyInput = "";
 			model = "";
-			token = "";
+			token = QString("Bearer %1").arg(Core::App().settings().sploxToken());
 		} else {
 			apiUrl = Core::App().settings().sploxURL();
 			systemPrompt = Core::App().settings().sploxSystemPrompt();

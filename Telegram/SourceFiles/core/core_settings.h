@@ -220,21 +220,6 @@ public:
 		_notifyView = value;
 	}
 	
-
-
-    void setSploxEnabled(bool value) {
-        _sploxEnabled = value;
-    }
-    [[nodiscard]] bool sploxEnabled() const {
-        return _sploxEnabled.current();
-    }
-    [[nodiscard]] rpl::producer<bool> sploxEnabledValue() const {
-        return _sploxEnabled.value();
-    }
-    [[nodiscard]] rpl::producer<bool> sploxEnabledChanges() const {
-        return _sploxEnabled.changes();
-    }
-
 	
 	[[nodiscard]] bool nativeNotifications() const;
 	void setNativeNotifications(bool value);
@@ -961,6 +946,20 @@ public:
 
 	void resetOnLastLogout();
 
+
+							// 	, sploxURL(u"yoururl"q)
+// , sploxFactCheckURL(u"yoururl"q) 
+// , sploxResponseBearerToken(u"yourtoken"q)
+// , sploxFactCheckBearerToken(u"yourtoken"q)
+// , sploxSystemPrompt(u"You are a helpful assistant."q)
+// , sploxFactCheckSystemPrompt(u"You are a helpful assistant."q)
+// , sploxEmptyInput(u"Answer briefly to the last message."q)
+// , sploxResponseModelName("yourmodel"q)
+// , sploxFactCheckModelName("yourmodel"q)
+// , sploxToken(u"yourtoken"q)
+// , sploxMessageContextLength(50)
+// , sploxEnabled(true)
+
 	void setSploxURL(const QString &url) {
 		_sploxURL = url;
 	}
@@ -1026,33 +1025,7 @@ public:
 		return _sploxSystemPrompt.changes();
 	}
 
-	void setSploxResponseModelName(const QString &modelName) {
-		_sploxResponseModelName = modelName;
-	}
-	[[nodiscard]] QString sploxResponseModelName() const {
-		return _sploxResponseModelName.current();
-	}
-	[[nodiscard]] rpl::producer<QString> sploxResponseModelNameValue() const {
-		return _sploxResponseModelName.value();
-	}
-	[[nodiscard]] rpl::producer<QString> sploxResponseModelNameChanges() const {
-		return _sploxResponseModelName.changes();
-	}
-
-	void setSploxFactCheckModelName(const QString &modelName) {
-		_sploxFactCheckModelName = modelName;
-	}
-	[[nodiscard]] QString sploxFactCheckModelName() const {
-		return _sploxFactCheckModelName.current();
-	}
-	[[nodiscard]] rpl::producer<QString> sploxFactCheckModelNameValue() const {
-		return _sploxFactCheckModelName.value();
-	}
-	[[nodiscard]] rpl::producer<QString> sploxFactCheckModelNameChanges() const {
-		return _sploxFactCheckModelName.changes();
-	}
-
-	// lng_settings_response_fact_check_system_prompt
+		// lng_settings_response_fact_check_system_prompt
 	void setSploxFactCheckSystemPrompt(const QString &prompt) {
 		_sploxFactCheckSystemPrompt = prompt;
 	}
@@ -1079,6 +1052,48 @@ public:
 		return _sploxEmptyInput.changes();
 	}	
 
+
+	void setSploxResponseModelName(const QString &modelName) {
+		_sploxResponseModelName = modelName;
+	}
+	[[nodiscard]] QString sploxResponseModelName() const {
+		return _sploxResponseModelName.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxResponseModelNameValue() const {
+		return _sploxResponseModelName.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxResponseModelNameChanges() const {
+		return _sploxResponseModelName.changes();
+	}
+
+	void setSploxFactCheckModelName(const QString &modelName) {
+		_sploxFactCheckModelName = modelName;
+	}
+	[[nodiscard]] QString sploxFactCheckModelName() const {
+		return _sploxFactCheckModelName.current();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckModelNameValue() const {
+		return _sploxFactCheckModelName.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxFactCheckModelNameChanges() const {
+		return _sploxFactCheckModelName.changes();
+	}
+
+
+
+	void setSploxToken(const QString &token) {
+		_sploxToken = token;
+	}
+	[[nodiscard]] QString sploxToken() const {
+		return _sploxToken.current();
+	}	
+	[[nodiscard]] rpl::producer<QString> sploxTokenValue() const {
+		return _sploxToken.value();
+	}
+	[[nodiscard]] rpl::producer<QString> sploxTokenChanges() const {
+		return _sploxToken.changes();
+	}
+
 	
 	// sploxMessageContextLength
 	void setSploxMessageContextLength(int length) {
@@ -1094,6 +1109,19 @@ public:
 		return _sploxMessageContextLength.changes();
 	}
 
+
+void setSploxEnabled(bool value) {
+        _sploxEnabled = value;
+    }
+    [[nodiscard]] bool sploxEnabled() const {
+        return _sploxEnabled.current();
+    }
+    [[nodiscard]] rpl::producer<bool> sploxEnabledValue() const {
+        return _sploxEnabled.value();
+    }
+    [[nodiscard]] rpl::producer<bool> sploxEnabledChanges() const {
+        return _sploxEnabled.changes();
+    }
 
 
 private:
@@ -1233,6 +1261,8 @@ private:
 
 	QByteArray _photoEditorBrush;
 
+
+
 	rpl::variable<QString> _sploxURL = u"your_url"_q; // Add default URL
 	rpl::variable<QString> _sploxFactCheckURL = u"your_url"_q; // Add default URL
 	rpl::variable<QString> _sploxResponseBearerToken = u"your_token"_q; // Add default token
@@ -1242,11 +1272,12 @@ private:
 	rpl::variable<QString> _sploxEmptyInput = u"Answer briefly to the last message."_q; // Add default empty input
 	rpl::variable<QString> _sploxResponseModelName = "your_model"_q; // Add default model name
 	rpl::variable<QString> _sploxFactCheckModelName = "your_model"_q; // Add default model name
+	rpl::variable<QString> _sploxToken = u"your_token"_q; // Add default token
 	rpl::variable<int> _sploxMessageContextLength = 50; // Add default context length
 	rpl::variable<bool> _sploxEnabled = true;
-	
 
-};
+
+}; 
 
 } // namespace Core
 
