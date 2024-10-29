@@ -3184,8 +3184,8 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
         loadingText.text += "Splox is checking your message... Please wait.";
         loadingText.entities.push_back({
             EntityType::Blockquote,
-            loadingStart,
-            loadingText.text.size() - loadingStart,
+            static_cast<int>(loadingStart),
+            static_cast<int>(loadingText.text.size() - loadingStart),
             QString()
         });
         item->setText(loadingText);
@@ -3292,8 +3292,8 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
 					// Add blockquote entity
 					text.entities.push_back({
 						EntityType::Blockquote,
-						originalLength,
-						aiPrefix.size() + content.size(),
+                        static_cast<int>(originalLength),
+                        static_cast<int>(aiPrefix.size() + content.size()),
 						QString()
 					});
 
@@ -3307,8 +3307,8 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
 						
 						text.entities.push_back({
 							EntityType::Url,
-							start,
-							length,
+                            static_cast<int>(start),
+                            static_cast<int>(length),
 							match.captured(1)
 						});
 					}
