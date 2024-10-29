@@ -95,6 +95,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/ui/dialogs_video_userpic.h"
 #include "styles/style_chat.h"
 #include "styles/style_menu_icons.h"
+#include "lang/lang_instance.h" // Add this include
 
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
@@ -3173,6 +3174,25 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
             }
         }();
 
+		const auto user = session()->;
+
+		
+        // Add loading blockquote
+        TextWithEntities loadingText = item->originalText();
+        loadingText.text += "\n\n";
+        const auto loadingStart = loadingText.text.size();
+        loadingText.text += "Splox is checking your message... Please wait.";
+        loadingText.entities.push_back({
+            EntityType::Blockquote,
+            loadingStart,
+            loadingText.text.size() - loadingStart,
+            QString()
+        });
+        item->setText(loadingText);
+        updateSize();
+        update();
+
+
 		QString apiUrl; 
 		QString systemPrompt;	
 		QString model;
@@ -3208,74 +3228,97 @@ void HistoryInner::proofcheckText(FullMsgId itemId) {
         messages.append(message1);
         messages.append(message2);
 
+
         QJsonObject payload;
         payload["model"] = QString(model);
         payload["messages"] = messages;
         payload["stream"] = false;
+
+
+		if (Core::App().settings().sploxEnabled()) {
+			QJsonObject userInfo;
+			userInfo["username"] = user->username();
+			userInfo["name"] = user->name();
+			userInfo["id"] = QString::number(user->id.value);
+			userInfo["language"] = Core::App().langpack().systemLangCode();
+
+			payload["user"] = userInfo;
+		}
+
 
         QJsonDocument doc(payload);
         
         // Make POST request
         auto networkManager = new QNetworkAccessManager(this);
         auto reply = networkManager->post(request, doc.toJson());
+
+		// add loading with blockquote to the end of the message
         
         // Handle response
         QObject::connect(reply, &QNetworkReply::finished, [=]() {
             const auto data = reply->readAll();
             const auto json = QJsonDocument::fromJson(data);
-            
-            if (json.isObject()) {
-                const auto obj = json.object();
-                const auto choices = obj["choices"].toArray();
-                if (!choices.isEmpty()) {
-                    const auto message = choices[0].toObject()["message"].toObject();
-                    const auto content = message["content"].toString();
-                    const auto existingText = item->originalText();
+				
+			if (json.isObject()) {
+				const auto obj = json.object();
+				const auto choices = obj["choices"].toArray();
+				if (!choices.isEmpty()) {
+					const auto message = choices[0].toObject()["message"].toObject();
+					const auto content = message["content"].toString();
+					
+					// Get original text without the loading message
+					TextWithEntities text = item->originalText();
+					const auto loadingText = QString("Splox is checking your message... Please wait.");
+					if (text.text.endsWith(loadingText)) {
+						// Remove loading message and the preceding newlines
+						text.text = text.text.left(text.text.length() 
+							- loadingText.length() 
+							- 2); // Remove "\n\n"						
+						// Remove the blockquote entity for loading
+						if (!text.entities.empty() 
+							&& text.entities.back().type() == EntityType::Blockquote) {
+							text.entities.pop_back();
+						}					
+					}
+					
+					// Add two newlines as separator
+					text.text += "\n\n";
+					const auto originalLength = text.text.size();
+					
+					// Add AI analysis
+					const auto aiPrefix = QString("\n");
+					text.text += aiPrefix + content;
 
-                    // Create combined text with original and AI analysis
-                    TextWithEntities text;
-                    text.text = existingText.text;
-                    text.entities = existingText.entities;
-                    
-                    // Add two newlines as separator
-                    text.text += "\n\n";
-                    const auto originalLength = text.text.size();
-                    
-                    // Add AI analysis
-                    const auto aiPrefix = QString("\n");
-                    text.text += aiPrefix + content;
+					// Add blockquote entity
+					text.entities.push_back({
+						EntityType::Blockquote,
+						originalLength,
+						aiPrefix.size() + content.size(),
+						QString()
+					});
 
-                    // Add blockquote entity first (so it covers everything including URLs)
-                    text.entities.push_back({
-                        EntityType::Blockquote,
-                        originalLength,
-                        aiPrefix.size() + content.size(),
-                        QString()
-                    });
+					// Add URL entities
+					QRegularExpression urlRegex(QString("\\b(https?://\\S+)\\b"));
+					auto matchIterator = urlRegex.globalMatch(content);
+					while (matchIterator.hasNext()) {
+						auto match = matchIterator.next();
+						const auto start = originalLength + aiPrefix.size() + match.capturedStart();
+						const auto length = match.capturedLength();
+						
+						text.entities.push_back({
+							EntityType::Url,
+							start,
+							length,
+							match.captured(1)
+						});
+					}
 
-                    // Then add URL entities on top
-                    QRegularExpression urlRegex(QString("\\b(https?://\\S+)\\b"));
-                    auto matchIterator = urlRegex.globalMatch(content);
-                    while (matchIterator.hasNext()) {
-                        auto match = matchIterator.next();
-                        const auto start = originalLength + aiPrefix.size() + match.capturedStart();
-                        const auto length = match.capturedLength();
-                        
-                        text.entities.push_back({
-                            EntityType::Url,
-                            start,
-                            length,
-                            match.captured(1)
-                        });
-                    }
-
-                    // Update the message with the new text and entities
-                    item->setText(text);
-                    updateSize();
-                    update();
-                }
-            }
-            
+					// Update the message with the new text and entities
+					item->setText(text);
+					updateSize();
+					update();
+				}
+			}            
             reply->deleteLater();
             networkManager->deleteLater();
         });

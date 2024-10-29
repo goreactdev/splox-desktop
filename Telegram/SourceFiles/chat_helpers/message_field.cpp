@@ -45,6 +45,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_settings.h"
 #include "base/qt/qt_common_adapters.h"
 #include "history/view/history_view_element.h" // Add this include
+#include "lang/lang_instance.h" // Add this include
+
+#include "data/data_forum_topic.h"
+#include "data/data_peer.h"
+#include "data/data_forum.h"
 
 #include <QtCore/QMimeData>
 #include <QtCore/QStack>
@@ -465,64 +470,41 @@ void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
     // Store the network manager in field's lifetime
     const auto networkManager = field->lifetime().make_state<QNetworkAccessManager>();
 
+
     // Function to get recent chat history
     const auto getRecentHistory = [=]() -> QString {
-        const auto history = args.session->data().history(
-            args.session->windows().empty()
-                ? PeerId()
-                : args.session->windows().front()->activeChatCurrent().peer()->id);
-        
+		const auto window = args.session->windows().front();
+		const auto current = window->activeChatCurrent();
+
+		    // Get history, handling both regular chats and topics
+        const auto history = [&]() -> not_null<History*> {
+			return current.owningHistory();
+        }();
+
         // Build history text
         struct MessageInfo {
             QString text;
             TimeId date;
         };
         std::vector<MessageInfo> messages;
-        const int messageLimit = Core::App().settings().sploxMessageContextLength();
-		
-        int count = 0;
-        
-        // First try to get the last message directly
-        if (const auto lastMsg = history->lastMessage()) {
-            if (!lastMsg->isEmpty()) {
-                messages.push_back({
-                    QString("%1: %2")
-                        .arg(lastMsg->from()->name())
-                        .arg(lastMsg->originalText().text),
-                    lastMsg->date()
-                });
-                count++;
-            }
-        }
 
-        // Then iterate through blocks for remaining messages
-        for (const auto &block : history->blocks) {
-            if (count >= messageLimit) {
-                break;
-            }
 
-            for (auto it = block->messages.rbegin(); it != block->messages.rend(); ++it) {
-                if (count >= messageLimit) {
-                    break;
-                }
-
-                const auto item = (*it)->data();
-                // Skip if this is the last message we already added
-                if (count == 1 && item == history->lastMessage()) {
-                    continue;
-                }
-
-                if (item && !item->isEmpty()) {
-                    messages.push_back({
-                        QString("%1: %2")
-                            .arg(item->from()->name())
-                            .arg(item->originalText().text),
-                        item->date()
-                    });
-                    count++;
-                }
-            }
-        }
+		// Iterate through blocks for all messages
+		for (const auto &block : history->blocks) {
+			for (const auto &msg : block->messages) {
+				const auto item = msg->data();
+				
+				if (item && !item->isEmpty()) {
+					messages.push_back({
+						QString("<message> Name: %1 \n UserID: %2 \n Content: %3 </message>")
+							.arg(item->from()->name())
+							.arg(QString::number(item->from()->id.value))
+							.arg(item->originalText().text),
+						item->date()
+					});
+				}
+			}
+		}
         
         // Sort messages by date
         std::sort(messages.begin(), messages.end(), 
@@ -530,6 +512,11 @@ void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
                 return a.date < b.date;
             });
         
+		const int messageLimit = Core::App().settings().sploxMessageContextLength();
+		if (messages.size() > messageLimit) {
+			messages.erase(messages.begin(), messages.end() - messageLimit);
+		}
+
         // Join messages with newlines
         QStringList result;
         result.reserve(messages.size());
@@ -563,6 +550,9 @@ void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
 			token = QString("Bearer %1").arg(Core::App().settings().sploxResponseBearerToken());
 		}
 
+		const auto user = args.session->user();
+
+
         // Create network request
         QNetworkRequest request((QUrl(apiUrl))); // Fixed: Create QNetworkRequest object with QUrl
         request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
@@ -586,10 +576,26 @@ void InitMessageFieldHandlers(MessageFieldHandlersArgs &&args) {
         payload["messages"] = messages;
         payload["stream"] = false;
 
+
+		// if splox enabled, use user's language
+		if (Core::App().settings().sploxEnabled()) {
+			QJsonObject userInfo;
+			userInfo["username"] = user->username();
+			userInfo["name"] = user->name();
+			userInfo["id"] = QString::number(user->id.value);
+			userInfo["language"] = Core::App().langpack().systemLangCode();
+
+			payload["user"] = userInfo;
+		}
+
+
+
+
         QJsonDocument doc(payload);
         
         // Make POST request
         auto reply = networkManager->post(request, doc.toJson());
+
         
         // Handle response
         QObject::connect(reply, &QNetworkReply::finished, [=]() {

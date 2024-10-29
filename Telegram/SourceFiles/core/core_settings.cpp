@@ -465,7 +465,7 @@ void Settings::addFromSerialized(const QByteArray &serialized) {
 	QString sploxResponseBearerToken = u"your_token"_q; // Default token
 	QString sploxFactCheckBearerToken = u"your_token"_q; // Default token
 	int sploxMessageContextLength = 50; // Default context length
-	bool sploxEnabled = false;
+	bool sploxEnabled = true;
 	QByteArray themesAccentColors;
 	qint32 adaptiveForWide = _adaptiveForWide.current() ? 1 : 0;
 	qint32 moderateModeEnabled = _moderateModeEnabled ? 1 : 0;
